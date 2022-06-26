@@ -53,6 +53,8 @@ class ExcelReporter(object):
 
     def __init__(self, excelpath):
         self.results = []
+        self.column_key = "model"
+        self.row_key = "test_step"
         self.wbook = Workbook()
         self.rc = 1
         self.excelpath = datetime.now().strftime(excelpath) 
@@ -66,21 +68,41 @@ class ExcelReporter(object):
 
         self.wsheet = self.wbook.create_sheet(index=0)
 
-        for heading in column_heading:
-            index_value = column_heading.index(heading) + 1
-            heading = heading.replace("_", " ").upper()
-            self.wsheet.cell(row=self.rc, column=index_value).value = heading
-        self.rc = self.rc + 1
+        all_row_fields = list(set([data[self.row_key] for data in self.results]))
+        for i, row_label in enumerate(all_row_fields, 2):
+            self.wsheet.cell(row=i, column=1).value = row_label
+
+        all_col_fields = sorted(set([data[self.column_key] for data in self.results]))
+        for i, col_label in enumerate(all_col_fields, 2):
+            self.wsheet.cell(row=1, column=i).value =col_label
+
+        # for heading in column_heading:
+        #     index_value = column_heading.index(heading) + 1
+        #     heading = heading.replace("_", " ").upper()
+        #     self.wsheet.cell(row=self.rc, column=index_value).value = heading
+        # self.rc = self.rc + 1
 
 
     def update_worksheet(self):
+        all_row_fields = sorted(set([data[self.row_key] for data in self.results]))
+        all_col_fields = sorted(set([data[self.column_key] for data in self.results]))
         for data in self.results:
-            for key, value in data.items():
-                try:
-                    self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = value
-                except ValueError:
-                    self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = str(vars(value))
-            self.rc = self.rc + 1
+            col_idx = all_col_fields.index(data[self.column_key]) + 2
+            row_idx = all_row_fields.index(data[self.row_key]) + 2
+            value = "OK" if data["result"] == "PASSED" else "ERR"
+            try:
+                self.wsheet.cell(row=row_idx, column=col_idx).value = value
+            except ValueError:
+                pass
+
+
+        # for data in self.results:
+        #     for key, value in data.items():
+        #         try:
+        #             self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = value
+        #         except ValueError:
+        #             self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = str(vars(value))
+        #     self.rc = self.rc + 1
 
 
     def save_excel(self):
@@ -105,6 +127,11 @@ class ExcelReporter(object):
         result['message'] = message
         result['file_name'] = report.location[0]
         result['markers'] = report.test_marker
+
+        # adding temporary test ids just for testing
+        result['model'] = result['suite_name']
+        result['test_step'] = result['test_name']
+
         self.append(result)
 
 
