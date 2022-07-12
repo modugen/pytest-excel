@@ -67,7 +67,7 @@ class ExcelReporter(object):
 
         self.wsheet = self.wbook.create_sheet(index=0)
 
-        all_row_fields = list(set([data[self.row_key] for data in self.results]))
+        all_row_fields = sorted(set([data[self.row_key] for data in self.results]))
         for i, row_label in enumerate(all_row_fields, 2):
             self.wsheet.cell(row=i, column=1).value = row_label
 
