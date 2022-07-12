@@ -21,10 +21,16 @@ def pytest_generate_tests(metafunc):
 
     xfailed_models = get_xfailed_models(metafunc)
     all_models = set(metafunc.cls.models)
+    model_markers = {
+        model: [pytest.mark.model(model)]
+        for model in all_models
+    }
+    for model in xfailed_models:
+        model_markers[model].append(pytest.mark.xfail(strict=True))
     argvalues = [
         pytest.param(
             *[model for _ in range(len(argnames))],
-            marks=pytest.mark.xfail(strict=True) if model in xfailed_models else (),
+            marks=model_markers[model],
         )
         for model in all_models
     ]

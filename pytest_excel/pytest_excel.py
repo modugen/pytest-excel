@@ -113,8 +113,23 @@ class ExcelReporter(object):
         result = OrderedDict()
         names = mangle_test_address(report.nodeid)
 
-        result['suite_name'] = names[-2]
-        result['test_name'] = names[-1]
+        model_name = None
+        for mark in report.test_marker:
+            if mark.name == "model":
+                model_name = mark.args[0]
+                break
+        if model_name is None:
+            raise AttributeError(
+                f"Test {report.nodeid} is not marked with a model name.\n"
+                "Add @pytest.mark.model('my_model_name') to the test function."
+            )
+        result['model'] = model_name
+
+        # test name is something like 'test_excel_report_01[fzkhaus]'
+        test_name = names[-1]
+        step_name_parts = test_name.split("[")[0].split("_")[1:]
+        result['test_step'] = "_".join(step_name_parts)
+
         if report.test_doc is None:
           result['description'] = report.test_doc
         else:
@@ -125,11 +140,6 @@ class ExcelReporter(object):
         result['timestamp'] = datetime.now().strftime('%Y-%m-%dT%H:%M:%S')
         result['message'] = message
         result['file_name'] = report.location[0]
-        result['markers'] = report.test_marker
-
-        # adding temporary test ids just for testing
-        result['model'] = result['suite_name']
-        result['test_step'] = result['test_name']
 
         self.append(result)
 
@@ -238,8 +248,10 @@ class ExcelReporter(object):
             if isinstance(v,list):
                 for x in v:
                     if isinstance(x,Mark):
-                        test_marker.append(x.name)
-        report.test_marker = ', '.join(test_marker)
+                        test_marker.append(x)
+            if isinstance(v, Mark):
+                test_marker.append(v)
+        report.test_marker = test_marker
 
 
     def pytest_runtest_logreport(self, report):
