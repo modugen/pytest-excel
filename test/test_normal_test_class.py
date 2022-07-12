@@ -9,7 +9,7 @@ class TestExcelReportB(object):
         """
         assert True
 
-    @pytest.mark.xfail(reason="passed Simply")
+    @pytest.mark.xfail(reason="passed Simply", strict=True)
     def test_excel_report_02(self):
         """
         Scenario: test_excel_report_02
