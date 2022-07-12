@@ -6,7 +6,6 @@ from openpyxl import Workbook
 import pytest
 from _pytest.mark.structures import Mark
 
-
 _py_ext_re = re.compile(r"\.py$")
 
 
@@ -150,7 +149,7 @@ class ExcelReporter(object):
         else:
             if hasattr(report.longrepr, "reprcrash"):
                 message = report.longrepr.reprcrash.message
-            elif isinstance(report.longrepr, (unicode, str)):
+            elif isinstance(report.longrepr, str):
                 message = report.longrepr
             else:
                 message = str(report.longrepr)
