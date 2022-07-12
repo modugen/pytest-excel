@@ -3,6 +3,7 @@ from typing import Set
 
 import pytest
 
+
 def pytest_generate_tests(metafunc):
     """
     Parameterize metafunc so that it is run once per model.
@@ -49,87 +50,75 @@ def get_xfailed_models(metafunc) -> Set[str]:
     return xfailed_models
 
 
+class TestExcelReportA(object):
+    models = ["fzkhaus", "noebauer"]
 
-class Test_Excel_Report_A(object):
-  models = ["fzkhaus", "noebauer"]
-  
+    def test_excel_report_01(self, ifc_file):
+        """
+        Scenario: test_excel_report_01
+        """
+        assert True
+
+    @pytest.mark.xfail(reason="passed Simply")
+    def test_excel_report_02(self, ifc_file):
+        """
+        Scenario: test_excel_report_02
+        """
+        assert True
+
+    @pytest.mark.skip(reason="Skip for No Reason")
+    def test_excel_report_03(self, ifc_file):
+        """
+        Scenario: test_excel_report_01
+        """
+        assert True
+
+    @pytest.mark.xfail(reason="Failed Simply")
+    def test_excel_report_04(self, ifc_file):
+        """
+        Scenario: test_excel_report_05
+        """
+        assert False
+
+    def test_excel_report_05(self, ifc_file):
+        """
+        Scenario: test_excel_report_06
+        """
+        assert True is False
+
+
+class TestExcelReportB(object):
     
-  def test_excel_report_01(self, ifc_file):
-    """
-    Scenario: test_excel_report_01
-    """
-    assert True
-    
-  
-  @pytest.mark.xfail(reason="passed Simply")  
-  def test_excel_report_02(self, ifc_file):
-    """
-    Scenario: test_excel_report_02
-    """
-    assert True
+    def test_excel_report_01(self):
+        """
+        Scenario: test_excel_report_01
+        """
+        assert True
 
+    @pytest.mark.xfail(reason="passed Simply")
+    def test_excel_report_02(self):
+        """
+        Scenario: test_excel_report_02
+        """
+        assert True
 
-  @pytest.mark.skip(reason="Skip for No Reason")
-  def test_excel_report_03(self, ifc_file):
-    """
-    Scenario: test_excel_report_01
-    """
-    assert True
+    @pytest.mark.skip(reason="Skip for No Reason")
+    def test_excel_report_03(self):
+        """
+        Scenario: test_excel_report_01
+        """
+        assert True
 
+    @pytest.mark.xfail(reason="Failed Simply")
+    def test_excel_report_04(self):
+        """
+        Scenario: test_excel_report_05
+        """
+        assert False
 
-  @pytest.mark.xfail(reason="Failed Simply")
-  def test_excel_report_04(self, ifc_file):
-    """
-    Scenario: test_excel_report_05
-    """
-    assert False
-
-
-  def test_excel_report_05(self, ifc_file):
-    """
-    Scenario: test_excel_report_06
-    """
-    assert True is False
-
-
-
-class Test_Excel_Report_B(object):
-  
-    
-  def test_excel_report_01(self):
-    """
-    Scenario: test_excel_report_01
-    """
-    assert True
-    
-  
-  @pytest.mark.xfail(reason="passed Simply")  
-  def test_excel_report_02(self):
-    """
-    Scenario: test_excel_report_02
-    """
-    assert True
-
-
-  @pytest.mark.skip(reason="Skip for No Reason")
-  def test_excel_report_03(self):
-    """
-    Scenario: test_excel_report_01
-    """
-    assert True
-
-
-  @pytest.mark.xfail(reason="Failed Simply")
-  def test_excel_report_04(self):
-    """
-    Scenario: test_excel_report_05
-    """
-    assert False
-
-
-  def test_excel_report_05(self):
-    """
-    Scenario: test_excel_report_06
-    """
-    assert True is False
+    def test_excel_report_05(self):
+        """
+        Scenario: test_excel_report_06
+        """
+        assert True is False
 
