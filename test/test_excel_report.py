@@ -59,7 +59,7 @@ class TestExcelReportA(object):
         """
         assert True
 
-    @pytest.mark.xfail(reason="passed Simply")
+    @pytest.mark.xfail_models("fzkhaus")
     def test_excel_report_02(self, ifc_file):
         """
         Scenario: test_excel_report_02
@@ -73,7 +73,7 @@ class TestExcelReportA(object):
         """
         assert True
 
-    @pytest.mark.xfail(reason="Failed Simply")
+    @pytest.mark.xfail_models("fzkhaus")
     def test_excel_report_04(self, ifc_file):
         """
         Scenario: test_excel_report_05
