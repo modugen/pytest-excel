@@ -52,8 +52,8 @@ class ExcelReporter(object):
 
     def __init__(self, excelpath):
         self.results = []
-        self.column_key = "model"
-        self.row_key = "test_step"
+        self.row_key = "model"
+        self.column_key = "test_step"
         self.wbook = Workbook()
         self.rc = 1
         self.excelpath = datetime.now().strftime(excelpath) 
