@@ -144,11 +144,9 @@ class ExcelReporter(object):
         self.build_result(report, status, message)
 
     def append_failure(self, report):
-
-        if hasattr(report, "wasxfail"):
+        if report.was_xfail:
             status = "XPASSED"
-            message = "xfail-marked test passes Reason: %s " % report.wasxfail
-
+            message = "xfail-marked test passes"
         else:
             if hasattr(report.longrepr, "reprcrash"):
                 message = report.longrepr.reprcrash.message
@@ -168,11 +166,9 @@ class ExcelReporter(object):
         self.build_result(report, status, message)
 
     def append_skipped(self, report):
-
-        if hasattr(report, "wasxfail"):
+        if report.was_xfail:
             status = "XFAILED"
-            message = "expected test failure Reason: %s " % report.wasxfail
-
+            message = "expected test failure"
         else:
             status = "SKIPPED"
             _, _, message = report.longrepr
@@ -230,6 +226,7 @@ class ExcelReporter(object):
 
         report = outcome.get_result()
         report.test_doc = item.obj.__doc__
+
         test_marker = []
         for k, v in item.keywords.items():
             if isinstance(v, list):
@@ -239,6 +236,9 @@ class ExcelReporter(object):
             if isinstance(v, Mark):
                 test_marker.append(v)
         report.test_marker = test_marker
+
+        xfail_markers = [mark for mark in item.own_markers if mark.name == "xfail"]
+        report.was_xfail = True if xfail_markers else False
 
     def pytest_runtest_logreport(self, report):
 
