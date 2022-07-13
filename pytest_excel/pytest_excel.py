@@ -86,7 +86,13 @@ class ExcelReporter(object):
         for data in self.results:
             col_idx = all_col_fields.index(data[self.column_key]) + 2
             row_idx = all_row_fields.index(data[self.row_key]) + 2
-            value = "OK" if data["result"] == "PASSED" else "ERR"
+            value = {
+                "PASSED": "OK",
+                "FAILED": "ERR",
+                "XPASSED": "OK",
+                "XFAILED": "ERR",
+                "SKIPPED": "ERR",
+            }[data["result"]]
             try:
                 self.wsheet.cell(row=row_idx, column=col_idx).value = value
             except ValueError:
