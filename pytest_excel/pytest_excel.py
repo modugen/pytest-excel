@@ -4,6 +4,7 @@ from collections import OrderedDict
 from openpyxl import Workbook
 import pytest
 from _pytest.mark.structures import Mark
+from openpyxl.styles import Font, Color, PatternFill, Border, Side
 
 _py_ext_re = re.compile(r"\.py$")
 
@@ -50,6 +51,18 @@ def mangle_test_address(address):
 
 
 class ExcelReporter(object):
+    STATUS_RESULT_MAP = {
+        "PASSED": "OK",
+        "FAILED": "ERR",
+        "XPASSED": "OK",
+        "XFAILED": "ERR",
+        "SKIPPED": "ERR",
+    }
+    RESULT_COLOR_MAP = {
+        "OK": "0099CC00",
+        "ERR": "00FF0000",
+    }
+
     def __init__(self, excelpath):
         self.results = []
         self.row_key = "model"
@@ -86,15 +99,15 @@ class ExcelReporter(object):
         for data in self.results:
             col_idx = all_col_fields.index(data[self.column_key]) + 2
             row_idx = all_row_fields.index(data[self.row_key]) + 2
-            value = {
-                "PASSED": "OK",
-                "FAILED": "ERR",
-                "XPASSED": "OK",
-                "XFAILED": "ERR",
-                "SKIPPED": "ERR",
-            }[data["result"]]
             try:
-                self.wsheet.cell(row=row_idx, column=col_idx).value = value
+                cell = self.wsheet.cell(row=row_idx, column=col_idx)
+                value = self.STATUS_RESULT_MAP[data["result"]]
+                cell.value = value
+                # green for "OK", red for "ERR"
+                color_code = self.RESULT_COLOR_MAP[value]
+                cell.fill = PatternFill("solid", fgColor=color_code)
+                thin = Side(border_style="thin", color="000000")
+                cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
             except ValueError:
                 pass
 
