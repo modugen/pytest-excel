@@ -63,7 +63,8 @@ class ExcelReporter(object):
         "ERR": "00FF0000",
     }
     """ Column and row index at which the result content of the sheet starts. """
-    RESULT_START_IDX = 2
+    RESULT_START_IDX = 3
+    SUMMARY_IDX = 2
 
     def __init__(self, excelpath):
         self.results = []
@@ -81,12 +82,14 @@ class ExcelReporter(object):
 
         self.wsheet = self.wbook.create_sheet(index=0)
 
-        all_row_fields = sorted(set([data[self.row_key] for data in self.results]))
-        for i, row_label in enumerate(all_row_fields, self.RESULT_START_IDX):
+        content_row_fields = sorted(set([data[self.row_key] for data in self.results]))
+        all_row_fields = ["summary"] + content_row_fields
+        for i, row_label in enumerate(all_row_fields, self.SUMMARY_IDX):
             self.wsheet.cell(row=i, column=1).value = row_label
 
-        all_col_fields = sorted(set([data[self.column_key] for data in self.results]))
-        for i, col_label in enumerate(all_col_fields, self.RESULT_START_IDX):
+        content_col_fields = sorted(set([data[self.column_key] for data in self.results]))
+        all_col_fields = ["summary"] + content_col_fields
+        for i, col_label in enumerate(all_col_fields, self.SUMMARY_IDX):
             self.wsheet.cell(row=1, column=i).value = col_label
 
         # for heading in column_heading:
@@ -98,12 +101,20 @@ class ExcelReporter(object):
     def update_worksheet(self):
         all_row_fields = sorted(set([data[self.row_key] for data in self.results]))
         all_col_fields = sorted(set([data[self.column_key] for data in self.results]))
+        row_summaries = {
+            row_idx: 0
+            for row_idx in range(self.RESULT_START_IDX, len(all_row_fields) + self.RESULT_START_IDX)
+        }
+        col_summaries = {
+            col_idx: 0
+            for col_idx in range(self.RESULT_START_IDX, len(all_col_fields) + self.RESULT_START_IDX)
+        }
         for data in self.results:
             col_idx = all_col_fields.index(data[self.column_key]) + self.RESULT_START_IDX
             row_idx = all_row_fields.index(data[self.row_key]) + self.RESULT_START_IDX
+            value = self.STATUS_RESULT_MAP[data["result"]]
             try:
                 cell = self.wsheet.cell(row=row_idx, column=col_idx)
-                value = self.STATUS_RESULT_MAP[data["result"]]
                 cell.value = value
                 # green for "OK", red for "ERR"
                 color_code = self.RESULT_COLOR_MAP[value]
@@ -112,6 +123,16 @@ class ExcelReporter(object):
                 cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
             except ValueError:
                 pass
+            if value == "ERR":
+                row_summaries[row_idx] += 1
+                col_summaries[col_idx] += 1
+            
+        for row_idx, row_summary in row_summaries.items():
+            cell = self.wsheet.cell(row=row_idx, column=self.SUMMARY_IDX)
+            cell.value = row_summary
+        for col_idx, col_summary in col_summaries.items():
+            cell = self.wsheet.cell(row=self.SUMMARY_IDX, column=col_idx)
+            cell.value = col_summary
 
         # for data in self.results:
         #     for key, value in data.items():
