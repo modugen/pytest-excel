@@ -138,7 +138,7 @@ class ExcelReporter(object):
         if self.result_matrix is not None:
             return
 
-        row_headers = sorted(set([data[self.row_key] for data in self.results]))
+        row_headers = set([data[self.row_key] for data in self.results])
         col_headers = sorted(set([data[self.column_key] for data in self.results]))
         self.result_matrix = pd.DataFrame("MISSING", index=row_headers, columns=col_headers)
 
@@ -153,6 +153,11 @@ class ExcelReporter(object):
         is_err = self.result_matrix[self.result_matrix == "ERR"]
         self.row_summaries = is_err.count(axis=1)
         self.col_summaries = is_err.count(axis=0)
+
+    def sort_matrix(self):
+        sorted_index = self.row_summaries.sort_values(ascending=False).index
+        self.result_matrix.reindex(index=sorted_index)
+        self.row_summaries.reindex(index=sorted_index)
 
     def save_excel(self):
         self.wbook.save(filename=self.excelpath)
@@ -317,6 +322,7 @@ class ExcelReporter(object):
                 self.create_matrix()
                 self.fill_matrix()
                 self.create_summaries()
+                self.sort_matrix()
 
                 self.create_sheet(fieldnames)
                 self.update_worksheet()
