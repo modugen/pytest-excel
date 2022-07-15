@@ -12,7 +12,7 @@ proc = subprocess.call(
 )
 print(proc)
 
-result = pd.read_excel(RESULT_FILE)
-expected = pd.read_excel(EXPECTED_RESULT_FILE)
+result = pd.read_excel(RESULT_FILE, keep_default_na=False)
+expected = pd.read_excel(EXPECTED_RESULT_FILE, keep_default_na=False)
 
 assert (result == expected).all().all()
