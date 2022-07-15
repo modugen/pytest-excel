@@ -97,31 +97,39 @@ class ExcelReporter(object):
             self.wsheet.cell(row=1, column=i).value = col_label
 
     def update_worksheet(self):
+        self.update_results_in_worksheet()
+        self.update_summaries_in_worksheet()
+
+    def update_summaries_in_worksheet(self):
+        assert (self.result_matrix.index == self.row_summaries.index).all()
+        for row_idx, row_summary in enumerate(
+                self.row_summaries.tolist(), self.RESULT_START_IDX
+        ):
+            cell = self.wsheet.cell(row=row_idx, column=self.SUMMARY_IDX)
+            cell.value = row_summary
+        for col_idx, col_summary in enumerate(
+                self.col_summaries.tolist(), self.RESULT_START_IDX
+        ):
+            cell = self.wsheet.cell(row=self.SUMMARY_IDX, column=col_idx)
+            cell.value = col_summary
+
+    def update_results_in_worksheet(self):
         rows = [row for _, row in self.result_matrix.iterrows()]
         for row_index, row in enumerate(rows, self.RESULT_START_IDX):
             for col_index, value in enumerate(row.tolist(), self.RESULT_START_IDX):
                 try:
                     cell = self.wsheet.cell(row=row_index, column=col_index)
                     cell.value = value
-                    # green for "OK", red for "ERR"
-                    color_code = self.RESULT_COLOR_MAP[value]
-                    cell.fill = PatternFill("solid", fgColor=color_code)
-                    thin = Side(border_style="thin", color="000000")
-                    cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
+                    self.style_cell(cell, value)
                 except ValueError:
                     pass
 
-        assert (self.result_matrix.index == self.row_summaries.index).all()
-        for row_idx, row_summary in enumerate(
-            self.row_summaries.tolist(), self.RESULT_START_IDX
-        ):
-            cell = self.wsheet.cell(row=row_idx, column=self.SUMMARY_IDX)
-            cell.value = row_summary
-        for col_idx, col_summary in enumerate(
-            self.col_summaries.tolist(), self.RESULT_START_IDX
-        ):
-            cell = self.wsheet.cell(row=self.SUMMARY_IDX, column=col_idx)
-            cell.value = col_summary
+    def style_cell(self, cell, value):
+        # green for "OK", red for "ERR"
+        color_code = self.RESULT_COLOR_MAP[value]
+        cell.fill = PatternFill("solid", fgColor=color_code)
+        thin = Side(border_style="thin", color="000000")
+        cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
 
     def create_matrix(self):
         """Create a matrix filled with "MISSING" based on the row and column keys in self.results."""
