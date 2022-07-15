@@ -86,6 +86,8 @@ class ExcelReporter(object):
 
     def create_sheet(self):
 
+        # TODO: check whether we really need to create a new sheet,
+        #   the result.xls contains two sheets which is one too many
         self.wsheet = self.wbook.create_sheet(index=0)
 
         all_row_fields = self.result_matrix.index.insert(0, "summary")
