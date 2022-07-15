@@ -1,12 +1,12 @@
 import re
-from datetime import datetime
 from collections import OrderedDict
+from datetime import datetime
 from typing import Optional
 
 import pandas as pd
-from openpyxl import Workbook
 import pytest
 from _pytest.mark.structures import Mark
+from openpyxl import Workbook
 from openpyxl.styles import PatternFill, Border, Side
 
 _py_ext_re = re.compile(r"\.py$")
@@ -112,30 +112,36 @@ class ExcelReporter(object):
                     pass
 
         assert (self.result_matrix.index == self.row_summaries.index).all()
-        for row_idx, row_summary in enumerate(self.row_summaries.tolist(), self.RESULT_START_IDX):
+        for row_idx, row_summary in enumerate(
+            self.row_summaries.tolist(), self.RESULT_START_IDX
+        ):
             cell = self.wsheet.cell(row=row_idx, column=self.SUMMARY_IDX)
             cell.value = row_summary
-        for col_idx, col_summary in enumerate(self.col_summaries.tolist(), self.RESULT_START_IDX):
+        for col_idx, col_summary in enumerate(
+            self.col_summaries.tolist(), self.RESULT_START_IDX
+        ):
             cell = self.wsheet.cell(row=self.SUMMARY_IDX, column=col_idx)
             cell.value = col_summary
 
     def create_matrix(self):
-        """ Create a matrix filled with "MISSING" based on the row and column keys in self.results."""
+        """Create a matrix filled with "MISSING" based on the row and column keys in self.results."""
         if self.result_matrix is not None:
             return
 
         row_headers = set([data[self.row_key] for data in self.results])
         col_headers = sorted(set([data[self.column_key] for data in self.results]))
-        self.result_matrix = pd.DataFrame("MISSING", index=row_headers, columns=col_headers)
+        self.result_matrix = pd.DataFrame(
+            "MISSING", index=row_headers, columns=col_headers
+        )
 
     def fill_matrix(self):
-        """ Update the matrix with the data from self.results. """
+        """Update the matrix with the data from self.results."""
         for data in self.results:
             value = self.STATUS_RESULT_MAP[data["result"]]
             self.result_matrix.at[data[self.row_key], data[self.column_key]] = value
 
     def create_summaries(self):
-        """ Calculate row and column summaries based on self.result_matrix. """
+        """Calculate row and column summaries based on self.result_matrix."""
         is_err = self.result_matrix[self.result_matrix == "ERR"]
         self.row_summaries = is_err.count(axis=1)
         self.col_summaries = is_err.count(axis=0)
