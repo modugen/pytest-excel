@@ -1,9 +1,13 @@
 import re
-from datetime import datetime
 from collections import OrderedDict
-from openpyxl import Workbook
+from datetime import datetime
+from typing import Optional
+
+import pandas as pd
 import pytest
 from _pytest.mark.structures import Mark
+from openpyxl import Workbook
+from openpyxl.styles import PatternFill, Border, Side
 
 _py_ext_re = re.compile(r"\.py$")
 
@@ -50,8 +54,26 @@ def mangle_test_address(address):
 
 
 class ExcelReporter(object):
+    STATUS_RESULT_MAP = {
+        "PASSED": "OK",
+        "FAILED": "ERR",
+        "XPASSED": "OK",
+        "XFAILED": "ERR",
+        "SKIPPED": "ERR",
+    }
+    RESULT_COLOR_MAP = {
+        "OK": "0099CC00",
+        "ERR": "00FF0000",
+    }
+    """ Column and row index at which the result content of the sheet starts. """
+    RESULT_START_IDX = 3
+    SUMMARY_IDX = 2
+
     def __init__(self, excelpath):
         self.results = []
+        self.result_matrix: Optional[pd.DataFrame] = None
+        self.row_summaries: Optional[pd.DataFrame] = None
+        self.col_summaries: Optional[pd.DataFrame] = None
         self.row_key = "model"
         self.column_key = "test_step"
         self.wbook = Workbook()
@@ -62,49 +84,83 @@ class ExcelReporter(object):
     def append(self, result):
         self.results.append(result)
 
-    def create_sheet(self, column_heading):
+    def create_sheet(self):
 
+        # TODO: check whether we really need to create a new sheet,
+        #   the result.xls contains two sheets which is one too many
         self.wsheet = self.wbook.create_sheet(index=0)
 
-        all_row_fields = sorted(set([data[self.row_key] for data in self.results]))
-        for i, row_label in enumerate(all_row_fields, 2):
+        all_row_fields = self.result_matrix.index.insert(0, "summary")
+        for i, row_label in enumerate(all_row_fields, self.SUMMARY_IDX):
             self.wsheet.cell(row=i, column=1).value = row_label
 
-        all_col_fields = sorted(set([data[self.column_key] for data in self.results]))
-        for i, col_label in enumerate(all_col_fields, 2):
+        all_col_fields = self.result_matrix.columns.insert(0, "summary")
+        for i, col_label in enumerate(all_col_fields, self.SUMMARY_IDX):
             self.wsheet.cell(row=1, column=i).value = col_label
 
-        # for heading in column_heading:
-        #     index_value = column_heading.index(heading) + 1
-        #     heading = heading.replace("_", " ").upper()
-        #     self.wsheet.cell(row=self.rc, column=index_value).value = heading
-        # self.rc = self.rc + 1
-
     def update_worksheet(self):
-        all_row_fields = sorted(set([data[self.row_key] for data in self.results]))
-        all_col_fields = sorted(set([data[self.column_key] for data in self.results]))
-        for data in self.results:
-            col_idx = all_col_fields.index(data[self.column_key]) + 2
-            row_idx = all_row_fields.index(data[self.row_key]) + 2
-            value = {
-                "PASSED": "OK",
-                "FAILED": "ERR",
-                "XPASSED": "OK",
-                "XFAILED": "ERR",
-                "SKIPPED": "ERR",
-            }[data["result"]]
-            try:
-                self.wsheet.cell(row=row_idx, column=col_idx).value = value
-            except ValueError:
-                pass
+        self.update_results_in_worksheet()
+        self.update_summaries_in_worksheet()
 
-        # for data in self.results:
-        #     for key, value in data.items():
-        #         try:
-        #             self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = value
-        #         except ValueError:
-        #             self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = str(vars(value))
-        #     self.rc = self.rc + 1
+    def update_summaries_in_worksheet(self):
+        assert (self.result_matrix.index == self.row_summaries.index).all()
+        for row_idx, row_summary in enumerate(
+                self.row_summaries.tolist(), self.RESULT_START_IDX
+        ):
+            cell = self.wsheet.cell(row=row_idx, column=self.SUMMARY_IDX)
+            cell.value = row_summary
+        for col_idx, col_summary in enumerate(
+                self.col_summaries.tolist(), self.RESULT_START_IDX
+        ):
+            cell = self.wsheet.cell(row=self.SUMMARY_IDX, column=col_idx)
+            cell.value = col_summary
+
+    def update_results_in_worksheet(self):
+        rows = [row for _, row in self.result_matrix.iterrows()]
+        for row_index, row in enumerate(rows, self.RESULT_START_IDX):
+            for col_index, value in enumerate(row.tolist(), self.RESULT_START_IDX):
+                try:
+                    cell = self.wsheet.cell(row=row_index, column=col_index)
+                    cell.value = value
+                    self.style_cell(cell, value)
+                except ValueError:
+                    pass
+
+    def style_cell(self, cell, value):
+        # green for "OK", red for "ERR"
+        color_code = self.RESULT_COLOR_MAP[self.STATUS_RESULT_MAP[value]]
+        cell.fill = PatternFill("solid", fgColor=color_code)
+        thin = Side(border_style="thin", color="000000")
+        cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
+
+    def create_matrix(self):
+        """Create a matrix filled with "MISSING" based on the row and column keys in self.results."""
+        if self.result_matrix is not None:
+            return
+
+        row_headers = set([data[self.row_key] for data in self.results])
+        col_headers = sorted(set([data[self.column_key] for data in self.results]))
+        self.result_matrix = pd.DataFrame(
+            "MISSING", index=row_headers, columns=col_headers
+        )
+
+    def fill_matrix(self):
+        """Update the matrix with the data from self.results."""
+        for data in self.results:
+            value = data["result"]
+            self.result_matrix.at[data[self.row_key], data[self.column_key]] = value
+
+    def create_summaries(self):
+        """Calculate row and column summaries based on self.result_matrix."""
+        ok_or_err = self.result_matrix.applymap(lambda x: self.STATUS_RESULT_MAP[x])
+        is_err = ok_or_err[ok_or_err == "ERR"]
+        self.row_summaries = is_err.count(axis=1)
+        self.col_summaries = is_err.count(axis=0)
+
+    def sort_matrix(self):
+        sorted_index = self.row_summaries.sort_values(ascending=False).index
+        self.result_matrix = self.result_matrix.reindex(index=sorted_index)
+        self.row_summaries = self.row_summaries.reindex(index=sorted_index)
 
     def save_excel(self):
         self.wbook.save(filename=self.excelpath)
@@ -265,8 +321,12 @@ class ExcelReporter(object):
     def pytest_sessionfinish(self, session):
         if not hasattr(session.config, "slaveinput"):
             if self.results:
-                fieldnames = list(self.results[0])
-                self.create_sheet(fieldnames)
+                self.create_matrix()
+                self.fill_matrix()
+                self.create_summaries()
+                self.sort_matrix()
+
+                self.create_sheet()
                 self.update_worksheet()
                 self.save_excel()
 

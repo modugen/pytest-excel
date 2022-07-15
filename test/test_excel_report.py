@@ -62,7 +62,7 @@ def get_marked_models(metafunc, marker) -> Set[str]:
 
 
 class TestExcelReportA(object):
-    models = ["fzkhaus", "noebauer"]
+    models = ["fzkhaus", "anbauer"]
 
     def test_excel_report_01(self, ifc_file):
         """
