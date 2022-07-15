@@ -126,7 +126,7 @@ class ExcelReporter(object):
 
     def style_cell(self, cell, value):
         # green for "OK", red for "ERR"
-        color_code = self.RESULT_COLOR_MAP[value]
+        color_code = self.RESULT_COLOR_MAP[self.STATUS_RESULT_MAP[value]]
         cell.fill = PatternFill("solid", fgColor=color_code)
         thin = Side(border_style="thin", color="000000")
         cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
@@ -145,12 +145,13 @@ class ExcelReporter(object):
     def fill_matrix(self):
         """Update the matrix with the data from self.results."""
         for data in self.results:
-            value = self.STATUS_RESULT_MAP[data["result"]]
+            value = data["result"]
             self.result_matrix.at[data[self.row_key], data[self.column_key]] = value
 
     def create_summaries(self):
         """Calculate row and column summaries based on self.result_matrix."""
-        is_err = self.result_matrix[self.result_matrix == "ERR"]
+        ok_or_err = self.result_matrix.applymap(lambda x: self.STATUS_RESULT_MAP[x])
+        is_err = ok_or_err[ok_or_err == "ERR"]
         self.row_summaries = is_err.count(axis=1)
         self.col_summaries = is_err.count(axis=0)
 
