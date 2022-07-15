@@ -1,6 +1,9 @@
 import re
 from datetime import datetime
 from collections import OrderedDict
+from typing import Optional
+
+import pandas as pd
 from openpyxl import Workbook
 import pytest
 from _pytest.mark.structures import Mark
@@ -68,6 +71,9 @@ class ExcelReporter(object):
 
     def __init__(self, excelpath):
         self.results = []
+        self.result_matrix: Optional[pd.DataFrame] = None
+        self.row_summaries: Optional[pd.DataFrame] = None
+        self.col_summaries: Optional[pd.DataFrame] = None
         self.row_key = "model"
         self.column_key = "test_step"
         self.wbook = Workbook()
@@ -82,13 +88,11 @@ class ExcelReporter(object):
 
         self.wsheet = self.wbook.create_sheet(index=0)
 
-        content_row_fields = sorted(set([data[self.row_key] for data in self.results]))
-        all_row_fields = ["summary"] + content_row_fields
+        all_row_fields = self.result_matrix.index.insert(0, "summary")
         for i, row_label in enumerate(all_row_fields, self.SUMMARY_IDX):
             self.wsheet.cell(row=i, column=1).value = row_label
 
-        content_col_fields = sorted(set([data[self.column_key] for data in self.results]))
-        all_col_fields = ["summary"] + content_col_fields
+        all_col_fields = self.result_matrix.columns.insert(0, "summary")
         for i, col_label in enumerate(all_col_fields, self.SUMMARY_IDX):
             self.wsheet.cell(row=1, column=i).value = col_label
 
@@ -99,38 +103,25 @@ class ExcelReporter(object):
         # self.rc = self.rc + 1
 
     def update_worksheet(self):
-        all_row_fields = sorted(set([data[self.row_key] for data in self.results]))
-        all_col_fields = sorted(set([data[self.column_key] for data in self.results]))
-        row_summaries = {
-            row_idx: 0
-            for row_idx in range(self.RESULT_START_IDX, len(all_row_fields) + self.RESULT_START_IDX)
-        }
-        col_summaries = {
-            col_idx: 0
-            for col_idx in range(self.RESULT_START_IDX, len(all_col_fields) + self.RESULT_START_IDX)
-        }
-        for data in self.results:
-            col_idx = all_col_fields.index(data[self.column_key]) + self.RESULT_START_IDX
-            row_idx = all_row_fields.index(data[self.row_key]) + self.RESULT_START_IDX
-            value = self.STATUS_RESULT_MAP[data["result"]]
-            try:
-                cell = self.wsheet.cell(row=row_idx, column=col_idx)
-                cell.value = value
-                # green for "OK", red for "ERR"
-                color_code = self.RESULT_COLOR_MAP[value]
-                cell.fill = PatternFill("solid", fgColor=color_code)
-                thin = Side(border_style="thin", color="000000")
-                cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
-            except ValueError:
-                pass
-            if value == "ERR":
-                row_summaries[row_idx] += 1
-                col_summaries[col_idx] += 1
-            
-        for row_idx, row_summary in row_summaries.items():
+        rows = [row for _, row in self.result_matrix.iterrows()]
+        for row_index, row in enumerate(rows, self.RESULT_START_IDX):
+            for col_index, value in enumerate(row.tolist(), self.RESULT_START_IDX):
+                try:
+                    cell = self.wsheet.cell(row=row_index, column=col_index)
+                    cell.value = value
+                    # green for "OK", red for "ERR"
+                    color_code = self.RESULT_COLOR_MAP[value]
+                    cell.fill = PatternFill("solid", fgColor=color_code)
+                    thin = Side(border_style="thin", color="000000")
+                    cell.border = Border(top=thin, left=thin, right=thin, bottom=thin)
+                except ValueError:
+                    pass
+
+        assert (self.result_matrix.index == self.row_summaries.index).all()
+        for row_idx, row_summary in enumerate(self.row_summaries.tolist(), self.RESULT_START_IDX):
             cell = self.wsheet.cell(row=row_idx, column=self.SUMMARY_IDX)
             cell.value = row_summary
-        for col_idx, col_summary in col_summaries.items():
+        for col_idx, col_summary in enumerate(self.col_summaries.tolist(), self.RESULT_START_IDX):
             cell = self.wsheet.cell(row=self.SUMMARY_IDX, column=col_idx)
             cell.value = col_summary
 
@@ -141,6 +132,27 @@ class ExcelReporter(object):
         #         except ValueError:
         #             self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = str(vars(value))
         #     self.rc = self.rc + 1
+
+    def create_matrix(self):
+        """ Create a matrix filled with "MISSING" based on the row and column keys in self.results."""
+        if self.result_matrix is not None:
+            return
+
+        row_headers = sorted(set([data[self.row_key] for data in self.results]))
+        col_headers = sorted(set([data[self.column_key] for data in self.results]))
+        self.result_matrix = pd.DataFrame("MISSING", index=row_headers, columns=col_headers)
+
+    def fill_matrix(self):
+        """ Update the matrix with the data from self.results. """
+        for data in self.results:
+            value = self.STATUS_RESULT_MAP[data["result"]]
+            self.result_matrix.at[data[self.row_key], data[self.column_key]] = value
+
+    def create_summaries(self):
+        """ Calculate row and column summaries based on self.result_matrix. """
+        is_err = self.result_matrix[self.result_matrix == "ERR"]
+        self.row_summaries = is_err.count(axis=1)
+        self.col_summaries = is_err.count(axis=0)
 
     def save_excel(self):
         self.wbook.save(filename=self.excelpath)
@@ -302,6 +314,10 @@ class ExcelReporter(object):
         if not hasattr(session.config, "slaveinput"):
             if self.results:
                 fieldnames = list(self.results[0])
+                self.create_matrix()
+                self.fill_matrix()
+                self.create_summaries()
+
                 self.create_sheet(fieldnames)
                 self.update_worksheet()
                 self.save_excel()
