@@ -7,7 +7,7 @@ import pandas as pd
 from openpyxl import Workbook
 import pytest
 from _pytest.mark.structures import Mark
-from openpyxl.styles import Font, Color, PatternFill, Border, Side
+from openpyxl.styles import PatternFill, Border, Side
 
 _py_ext_re = re.compile(r"\.py$")
 
@@ -84,7 +84,7 @@ class ExcelReporter(object):
     def append(self, result):
         self.results.append(result)
 
-    def create_sheet(self, column_heading):
+    def create_sheet(self):
 
         self.wsheet = self.wbook.create_sheet(index=0)
 
@@ -95,12 +95,6 @@ class ExcelReporter(object):
         all_col_fields = self.result_matrix.columns.insert(0, "summary")
         for i, col_label in enumerate(all_col_fields, self.SUMMARY_IDX):
             self.wsheet.cell(row=1, column=i).value = col_label
-
-        # for heading in column_heading:
-        #     index_value = column_heading.index(heading) + 1
-        #     heading = heading.replace("_", " ").upper()
-        #     self.wsheet.cell(row=self.rc, column=index_value).value = heading
-        # self.rc = self.rc + 1
 
     def update_worksheet(self):
         rows = [row for _, row in self.result_matrix.iterrows()]
@@ -124,14 +118,6 @@ class ExcelReporter(object):
         for col_idx, col_summary in enumerate(self.col_summaries.tolist(), self.RESULT_START_IDX):
             cell = self.wsheet.cell(row=self.SUMMARY_IDX, column=col_idx)
             cell.value = col_summary
-
-        # for data in self.results:
-        #     for key, value in data.items():
-        #         try:
-        #             self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = value
-        #         except ValueError:
-        #             self.wsheet.cell(row=self.rc, column=list(data).index(key) + 1).value = str(vars(value))
-        #     self.rc = self.rc + 1
 
     def create_matrix(self):
         """ Create a matrix filled with "MISSING" based on the row and column keys in self.results."""
@@ -318,13 +304,12 @@ class ExcelReporter(object):
     def pytest_sessionfinish(self, session):
         if not hasattr(session.config, "slaveinput"):
             if self.results:
-                fieldnames = list(self.results[0])
                 self.create_matrix()
                 self.fill_matrix()
                 self.create_summaries()
                 self.sort_matrix()
 
-                self.create_sheet(fieldnames)
+                self.create_sheet()
                 self.update_worksheet()
                 self.save_excel()
 
