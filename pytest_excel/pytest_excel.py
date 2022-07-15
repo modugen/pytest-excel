@@ -156,8 +156,8 @@ class ExcelReporter(object):
 
     def sort_matrix(self):
         sorted_index = self.row_summaries.sort_values(ascending=False).index
-        self.result_matrix.reindex(index=sorted_index)
-        self.row_summaries.reindex(index=sorted_index)
+        self.result_matrix = self.result_matrix.reindex(index=sorted_index)
+        self.row_summaries = self.row_summaries.reindex(index=sorted_index)
 
     def save_excel(self):
         self.wbook.save(filename=self.excelpath)
